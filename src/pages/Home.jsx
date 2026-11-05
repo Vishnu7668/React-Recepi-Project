@@ -8,17 +8,24 @@ function Home() {
 
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [errorMsg, seterrormsg] = useState(true);
+  const [errorMsg, seterrormsg] = useState("");
   const [total, setTotal] = useState(0);
+  const [searchQuery , setSearchQuery] = useState("")
 
-  async function FetchRecipes(skipCount) {
+  async function FetchRecipes(skipCount,query) {
+    setLoading(true)
     try {
-      const { data } = await axios.get(`https://dummyjson.com/recipes?limit=6&skip=${skipCount}`)
-      setRecipes((prev) => [...prev,...data.recipes])
+      let url = `https://dummyjson.com/recipes?limit=6&skip=${skipCount}`
+      if(query){
+        url = `https://dummyjson.com/recipes/search?limit=6&skip=${skipCount}&q=${query}`
+      }
+      
+      const { data } = await axios.get(url)
+      setRecipes((prev) => skipCount === 0 ? data.recipes : [...prev,...data.recipes])
       setTotal(data.total)
 
     } catch (error) {
-      console.log(error);
+      seterrormsg("Please try again...")
     }
     setLoading(false)
   }
@@ -27,27 +34,22 @@ function Home() {
     FetchRecipes(0)
   }, [])
 
-  if (loading) {
-    return <p className="text-center py-6 text-muted">Loading...</p>
+  function handleSearch(e){
+    e.preventDefault();
+    const form = new FormData(e.target);
+    let query = form.get("query").trim();
+    setSearchQuery(query)
+
+    // if(query){
+      FetchRecipes(0,query)
+    // }
   }
+
+
   if (errorMsg) {
-    (
+    return (
       <main className="max-w-6xl mx-auto px-4 py-8">
-        <Link
-          to="/"
-          className="text-accent hover:underline inline-flex items-center gap-1 mb-4"
-        >
-          <svg
-            className="w-4 h-4 stroke-current fill-none"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
-            <line x1="19" y1="12" x2="5" y2="12" />
-            <polyline points="12 19 5 12 12 5" />
-          </svg>
-          Back to Home
-        </Link>
-        <p className="text-accent">{errorMsg || "Recipe not found."}</p>
+        <p className="text-accent text-center">{errorMsg}</p>
       </main>
 
     );
@@ -56,16 +58,19 @@ function Home() {
   return (
     <main className="max-w-6xl mx-auto px-4 py-8">
 
-      <form className="flex gap-2 max-w-md mx-auto mb-8">
+      <form onSubmit={handleSearch} className="flex gap-2 max-w-md mx-auto mb-8">
         <input
           type="text"
+          name="query"
           placeholder="Search recipes..."
           className="flex-1 border border-border rounded px-3 py-2 bg-card text-text outline-none focus:border-accent"
         />
-        <button type="button" className="bg-accent hover:bg-accent-hover text-white rounded px-4 py-2 font-medium">
+        <button type="submit" className="bg-accent hover:bg-accent-hover text-white rounded px-4 py-2 font-medium">
           Search
         </button>
       </form>
+      {loading && <p className="text-center py-6 text-muted">Loading...</p>}
+      {!loading &&recipes.length === 0 && <p className="text-center py-6 text-muted">{`No recipe found for '${searchQuery}'`}</p>}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {recipes.map((recipe) => (
@@ -78,7 +83,7 @@ function Home() {
       {recipes.length < total && <div className="text-center mt-8">
         <button
           type="button"
-          onClick={() => FetchRecipes(recipes.length)}
+          onClick={() => FetchRecipes(recipes.length , searchQuery)}
           className="bg-accent hover:bg-accent-hover text-white rounded px-6 py-2 font-medium"
         >
           Load More
